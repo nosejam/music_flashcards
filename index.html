@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Needle Drop — Music Flashcards</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f7f1e8;
+      --muted: #ada7a0;
+      --paper: #171615;
+      --panel: #211f1d;
+      --line: #3a3632;
+      --accent: #ff7657;
+      --accent-2: #ffd166;
+      --good: #77c593;
+      --shadow: 0 24px 70px #0008;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 5%, #5c2b2566, transparent 30rem),
+        radial-gradient(circle at 90% 95%, #4b402655, transparent 35rem),
+        var(--paper);
+      font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .shell { width: min(1040px, calc(100% - 32px)); margin: auto; padding: 32px 0 60px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 30px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .mark { width: 42px; height: 42px; border: 2px solid var(--accent); border-radius: 50%; position: relative; }
+    .mark::after { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: var(--accent); }
+    h1, h2, p { margin: 0; }
+    h1 { font-family: Georgia, serif; font-size: clamp(1.5rem, 4vw, 2.2rem); letter-spacing: -.03em; }
+    .eyebrow { color: var(--accent); font-size: .72rem; letter-spacing: .15em; text-transform: uppercase; }
+    .stats { color: var(--muted); font-size: .8rem; text-align: right; }
+
+    .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr); gap: 20px; }
+    .card, .settings { border: 1px solid var(--line); background: #211f1de8; box-shadow: var(--shadow); }
+    .card { min-height: 570px; padding: clamp(22px, 5vw, 48px); display: flex; flex-direction: column; }
+    .settings { padding: 24px; align-self: start; }
+    .step { color: var(--muted); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
+    .prompt { margin-top: auto; margin-bottom: auto; text-align: center; }
+    .prompt h2 { font: 700 clamp(2rem, 7vw, 4.7rem)/.98 Georgia, serif; letter-spacing: -.05em; }
+    .prompt p { color: var(--muted); margin: 18px auto 0; max-width: 42ch; }
+
+    .drop-zone { display: block; border: 1px dashed #69615a; padding: 26px 18px; cursor: pointer; transition: .2s; }
+    .drop-zone:hover, .drop-zone.dragging { border-color: var(--accent); background: #ff76570b; }
+    .drop-zone input { position: absolute; opacity: 0; pointer-events: none; }
+    .drop-zone strong { display: block; margin-bottom: 5px; }
+    .drop-zone small { color: var(--muted); }
+
+    .wave { height: 84px; display: flex; gap: 4px; align-items: center; justify-content: center; margin: 24px 0; }
+    .bar { width: 5px; height: 12%; background: var(--accent); border-radius: 8px; opacity: .55; }
+    .playing .bar { animation: pulse .7s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -45ms); }
+    @keyframes pulse { to { height: calc(18% + var(--n) * 7%); opacity: 1; } }
+
+    .answer { border-top: 1px solid var(--line); padding-top: 24px; text-align: left; }
+    .answer h2 { font: 700 clamp(1.65rem, 5vw, 3rem)/1.05 Georgia, serif; }
+    .answer .artist { color: var(--accent-2); margin-top: 7px; }
+    .edit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+    label span { display: block; color: var(--muted); font-size: .72rem; margin-bottom: 6px; text-transform: uppercase; }
+    input[type="text"], select {
+      width: 100%; color: var(--ink); background: #151413; border: 1px solid var(--line); border-radius: 0; padding: 10px 11px;
+    }
+    input:focus, select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+
+    .actions, .ratings { display: grid; gap: 10px; }
+    .actions { grid-template-columns: 1fr auto; margin-top: 24px; }
+    .ratings { grid-template-columns: repeat(3, 1fr); margin-top: 18px; }
+    button { border: 1px solid var(--line); background: transparent; padding: 13px 16px; cursor: pointer; transition: .15s; }
+    button:hover:not(:disabled) { border-color: var(--ink); transform: translateY(-1px); }
+    button:disabled { opacity: .35; cursor: not-allowed; }
+    .primary { background: var(--accent); color: #21100d; border-color: var(--accent); font-weight: 800; }
+    .rating[data-score="0"]:hover { border-color: var(--accent); color: var(--accent); }
+    .rating[data-score="1"]:hover { border-color: var(--accent-2); color: var(--accent-2); }
+    .rating[data-score="2"]:hover { border-color: var(--good); color: var(--good); }
+
+    .settings h2 { font: 700 1.3rem Georgia, serif; margin-bottom: 22px; }
+    .field { margin: 18px 0; }
+    .range-line { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: .75rem; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .check { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: .84rem; cursor: pointer; }
+    .check input { accent-color: var(--accent); }
+    .library { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 18px; }
+    .library p { color: var(--muted); font-size: .78rem; margin-top: 7px; }
+    .text-button { border: 0; padding: 0; margin-top: 12px; color: var(--muted); font-size: .75rem; text-decoration: underline; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .settings { order: -1; }
+      .card { min-height: 520px; }
+      .edit-row { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><div class="mark"></div><div><div class="eyebrow">Ear training</div><h1>Needle Drop</h1></div></div>
+      <div class="stats"><span id="reviewed">0</span> reviewed<br><span id="accuracy">—</span> known</div>
+    </header>
+
+    <div class="grid">
+      <section class="card" id="card">
+        <div class="step" id="step">Build your deck</div>
+
+        <div class="prompt" id="emptyState">
+          <h2>Name that tune.</h2>
+          <p>Choose a folder of MP3s. Your files never leave this browser.</p>
+          <label class="drop-zone" id="dropZone">
+            <input id="fileInput" type="file" accept="audio/mpeg,.mp3" webkitdirectory directory multiple>
+            <strong>Choose music folder</strong>
+            <small>or drop MP3 files here</small>
+          </label>
+        </div>
+
+        <div class="prompt hidden" id="quizState">
+          <h2 id="question">What song is this?</h2>
+          <div class="wave" id="wave" aria-hidden="true"></div>
+          <p id="playStatus">Listen closely…</p>
+        </div>
+
+        <div class="answer hidden" id="answerState">
+          <h2 id="titleText"></h2>
+          <div class="artist" id="artistText"></div>
+          <div class="edit-row">
+            <label><span>Title</span><input id="titleInput" type="text"></label>
+            <label><span>Artist</span><input id="artistInput" type="text"></label>
+          </div>
+          <div class="ratings">
+            <button class="rating" data-score="0">Missed</button>
+            <button class="rating" data-score="1">Almost</button>
+            <button class="rating" data-score="2">Know</button>
+          </div>
+        </div>
+
+        <div class="actions hidden" id="actions">
+          <button id="replayBtn" aria-label="Replay excerpt">↻ Replay</button>
+          <button class="primary" id="revealBtn">Reveal answer</button>
+        </div>
+        <audio id="audio" preload="metadata"></audio>
+      </section>
+
+      <aside class="settings">
+        <h2>Session setup</h2>
+        <label class="field"><span>Ask me for</span>
+          <select id="questionMode"><option value="both">Title + artist</option><option value="title">Song title</option><option value="artist">Artist</option></select>
+        </label>
+        <label class="field"><span>Start position</span>
+          <select id="startMode"><option value="mixed">Mix it up</option><option value="start">Always beginning</option><option value="random">Random (20–60 sec)</option></select>
+        </label>
+        <div class="field">
+          <div class="range-line"><span>Excerpt length</span><strong><span id="durationLabel">7</span>s</strong></div>
+          <input id="clipDuration" type="range" min="5" max="10" value="7">
+        </div>
+        <label class="check"><input id="continuePlaying" type="checkbox" checked> Continue playing after reveal</label>
+        <div class="library">
+          <strong id="libraryCount">No songs loaded</strong>
+          <p>Missed songs return sooner. “Know” gives them a longer rest.</p>
+          <button class="text-button hidden" id="changeFolder">Choose another folder</button>
+          <button class="text-button" id="resetHistory">Reset review history</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const els = {
+      audio: $('#audio'), card: $('#card'), empty: $('#emptyState'), quiz: $('#quizState'), answer: $('#answerState'),
+      actions: $('#actions'), reveal: $('#revealBtn'), replay: $('#replayBtn'), input: $('#fileInput'), drop: $('#dropZone'),
+      step: $('#step'), question: $('#question'), status: $('#playStatus'), wave: $('#wave'), title: $('#titleText'), artist: $('#artistText'),
+      titleInput: $('#titleInput'), artistInput: $('#artistInput'), count: $('#libraryCount'), change: $('#changeFolder'),
+      reviewed: $('#reviewed'), accuracy: $('#accuracy'), duration: $('#clipDuration'), durationLabel: $('#durationLabel')
+    };
+    const HISTORY_KEY = 'needle-drop-history-v1';
+    let songs = [], current = null, stopTimer = null, objectUrl = null, history = readHistory();
+
+    for (let i = 0; i < 24; i++) {
+      const bar = document.createElement('i');
+      bar.className = 'bar'; bar.style.setProperty('--i', i); bar.style.setProperty('--n', 1 + (i * 7) % 9);
+      els.wave.append(bar);
+    }
+
+    function readHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; } catch { return {}; }
+    }
+
+    function saveHistory() { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); updateStats(); }
+    function songKey(file) { return `${file.name}|${file.size}|${file.lastModified}`; }
+
+    function detailsFromFilename(name) {
+      const clean = name.replace(/\.mp3$/i, '').replace(/^\d+[\s._-]+/, '').trim();
+      const parts = clean.split(/\s+-\s+/);
+      if (parts.length > 1) return { artist: parts.shift().trim(), title: parts.join(' - ').trim() };
+      return { artist: 'Unknown artist', title: clean };
+    }
+
+    function loadFiles(fileList) {
+      songs = [...fileList].filter(file => file.type === 'audio/mpeg' || /\.mp3$/i.test(file.name)).map(file => {
+        const parsed = detailsFromFilename(file.name), saved = history[songKey(file)] || {};
+        return { file, key: songKey(file), title: saved.title || parsed.title, artist: saved.artist || parsed.artist };
+      });
+      if (!songs.length) { els.drop.querySelector('small').textContent = 'No MP3s found — try another folder'; return; }
+      els.count.textContent = `${songs.length} song${songs.length === 1 ? '' : 's'} loaded`;
+      els.change.classList.remove('hidden'); els.empty.classList.add('hidden'); els.quiz.classList.remove('hidden'); els.actions.classList.remove('hidden');
+      nextCard();
+    }
+
+    function chooseSong() {
+      const now = Date.now();
+      let pool = songs.filter(song => (history[song.key]?.due || 0) <= now);
+      if (!pool.length) pool = songs;
+      const weighted = pool.map(song => {
+        const h = history[song.key];
+        return { song, weight: !h ? 5 : Math.max(1, 7 - (h.strength || 0) * 1.5) + (h.lastScore === 0 ? 5 : h.lastScore === 1 ? 2 : 0) };
+      });
+      const total = weighted.reduce((sum, item) => sum + item.weight, 0);
+      let pick = Math.random() * total;
+      return weighted.find(item => (pick -= item.weight) <= 0)?.song || weighted[0].song;
+    }
+
+    function nextCard() {
+      stopAudio(); current = chooseSong();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(current.file); els.audio.src = objectUrl;
+      els.answer.classList.add('hidden'); els.quiz.classList.remove('hidden'); els.actions.classList.remove('hidden'); els.reveal.classList.remove('hidden');
+      els.step.textContent = 'Listen · then reveal';
+      const mode = $('#questionMode').value;
+      els.question.textContent = mode === 'title' ? 'What song is this?' : mode === 'artist' ? 'Who is the artist?' : 'Name the song + artist.';
+      els.status.textContent = 'Loading excerpt…';
+      els.audio.onloadedmetadata = () => playExcerpt();
+      els.audio.onerror = () => { els.status.textContent = 'This file could not be played.'; };
+      els.audio.load();
+    }
+
+    function startPoint() {
+      const mode = $('#startMode').value;
+      const random = mode === 'random' || (mode === 'mixed' && Math.random() < .5);
+      if (!random || !Number.isFinite(els.audio.duration)) return 0;
+      const max = Math.min(60, Math.max(20, els.audio.duration - Number(els.duration.value) - 1));
+      return els.audio.duration > 25 ? 20 + Math.random() * (max - 20) : 0;
+    }
+
+    async function playExcerpt(samePoint = false) {
+      clearTimeout(stopTimer);
+      if (!samePoint) els.audio.currentTime = startPoint();
+      try {
+        await els.audio.play(); els.wave.classList.add('playing'); els.status.textContent = 'Playing excerpt…';
+        stopTimer = setTimeout(() => { els.audio.pause(); els.wave.classList.remove('playing'); els.status.textContent = 'Ready when you are.'; }, Number(els.duration.value) * 1000);
+      } catch { els.status.textContent = 'Press Replay to hear the excerpt.'; }
+    }
+
+    function stopAudio() { clearTimeout(stopTimer); els.audio.pause(); els.wave.classList.remove('playing'); }
+
+    function reveal() {
+      clearTimeout(stopTimer);
+      if ($('#continuePlaying').checked) { els.audio.play().catch(() => {}); els.wave.classList.add('playing'); }
+      else stopAudio();
+      els.quiz.classList.add('hidden'); els.actions.classList.add('hidden'); els.answer.classList.remove('hidden');
+      els.step.textContent = 'How did you do?';
+      els.title.textContent = current.title; els.artist.textContent = current.artist;
+      els.titleInput.value = current.title; els.artistInput.value = current.artist;
+    }
+
+    function rate(score) {
+      const old = history[current.key] || { reviews: 0, strength: 0, known: 0 };
+      const strength = score === 0 ? 0 : score === 1 ? Math.max(1, old.strength || 0) : Math.min(8, (old.strength || 0) + 1);
+      const waits = score === 0 ? 3 : score === 1 ? 15 : Math.min(1440, 30 * Math.pow(2, strength - 1));
+      current.title = els.titleInput.value.trim() || current.title; current.artist = els.artistInput.value.trim() || current.artist;
+      history[current.key] = { ...old, title: current.title, artist: current.artist, reviews: old.reviews + 1, known: old.known + (score === 2 ? 1 : 0), strength, lastScore: score, due: Date.now() + waits * 60_000 };
+      saveHistory(); nextCard();
+    }
+
+    function updateStats() {
+      const entries = Object.values(history), reviewed = entries.reduce((n, h) => n + (h.reviews || 0), 0), known = entries.reduce((n, h) => n + (h.known || 0), 0);
+      els.reviewed.textContent = reviewed; els.accuracy.textContent = reviewed ? `${Math.round(known / reviewed * 100)}%` : '—';
+    }
+
+    els.input.addEventListener('change', event => loadFiles(event.target.files));
+    ['dragenter', 'dragover'].forEach(type => els.drop.addEventListener(type, event => { event.preventDefault(); els.drop.classList.add('dragging'); }));
+    ['dragleave', 'drop'].forEach(type => els.drop.addEventListener(type, event => { event.preventDefault(); els.drop.classList.remove('dragging'); }));
+    els.drop.addEventListener('drop', event => loadFiles(event.dataTransfer.files));
+    els.reveal.addEventListener('click', reveal);
+    els.replay.addEventListener('click', () => playExcerpt(false));
+    document.querySelectorAll('.rating').forEach(button => button.addEventListener('click', () => rate(Number(button.dataset.score))));
+    els.duration.addEventListener('input', () => els.durationLabel.textContent = els.duration.value);
+    els.change.addEventListener('click', () => els.input.click());
+    $('#resetHistory').addEventListener('click', () => { if (confirm('Reset all review history and corrected titles?')) { history = {}; saveHistory(); } });
+    updateStats();
+  </script>
+</body>
+</html>
